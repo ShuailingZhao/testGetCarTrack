@@ -1,0 +1,56 @@
+#include "bA.h"
+namespace bA{
+//	template <typename T>
+//	bool CostFunctor<T>::operator()(const T* const x, T* residual) const {
+//		residual[0] = T(10.0) - x[0];
+//		return true;
+//	}
+//	
+//	bool optimizeDAndH(const double f=1470.29)
+//	{
+//		// 建立Problem
+//		ceres::Problem problem;
+//		// 建立CostFunction（残差方程）
+//		double focal = 1470.29;
+//		std::vector<double> steps;
+//		std::vector<double> h2s;
+//		steps.push_back(4.8226554029+4.5434018418+4.4439593127+4.64733);
+//		steps.push_back(4.5434018418+4.4439593127+4.64733);
+//		steps.push_back(4.4439593127+4.64733);
+//		steps.push_back(4.64733);
+//		steps.push_back(0.0);
+//	
+//		h2s.push_back(57.2548);
+//		h2s.push_back(62.2809);
+//		h2s.push_back(68.3604);
+//		h2s.push_back(74.4402);
+//		h2s.push_back(81.5394);
+//	
+//		double initialD = 48.0;//43.0
+//		double d = initialD;
+//		double initialH2 = 2.73; //2.4
+//		double H2 = initialH2;
+//	//	double h2=81.5394;
+//	//	double h2s=74.4402;
+//		for(int i=0;i<steps.size();i++)
+//		{
+//			ceres::CostFunction* cost_function = new ceres::AutoDiffCostFunction<bA::CostFunctor, 1, 1, 1>(new bA::CostFunctor(steps[i], h2s[i], focal));
+//			problem.AddResidualBlock(cost_function, NULL, &d, &H2);
+
+//		}
+//		// 求解方程!
+//		ceres::Solver::Options options;
+//		options.linear_solver_type = ceres::DENSE_QR;
+//		options.minimizer_progress_to_stdout = true;
+//		ceres::Solver::Summary summary;
+//		ceres::Solve(options, &problem, &summary);
+
+//		std::cout << summary.BriefReport() << "\n";
+//		std::cout << "d : " << initialD
+//		     << " -> " << d << "\n";
+//		     
+//		std::cout << "H2 : " << initialH2
+//		     << " -> " << H2 << "\n";
+
+//	}
+}
