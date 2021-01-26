@@ -13,6 +13,8 @@
 #include "wgs84_3degreeGauss.h"
 #include "getCarInWitchLane.h"
 #include "ToolsBox.h"
+
+//#define ZHAODEBUG
 struct CARDETECTED{
 	int frame;
 	int carId;
@@ -721,10 +723,17 @@ int main(int argc, char** argv)
 	
 	while(getCarDetect(carDetectInfo, carPosCsvFile))
 	{
+		
 		clock_t startTime,endTime;
 //		startTime = clock();
 		frameIndex++;
-		std::cout<<frameIndex<<std::endl;
+		std::cout<<"frameIndex: "<<frameIndex<<std::endl;
+#ifdef ZHAODEBUG
+		if(frameIndex<174)
+		{
+			continue;
+		}
+#endif
 		std::vector<cv::Point2d> carsPosLongLat;
 		std::vector<cv::Point2d> carDxDy;
 		std::vector<CARPOSINFO> carsPosInfo;
@@ -743,14 +752,29 @@ int main(int argc, char** argv)
 		{	
 			if(configFile.npos != configFile.find("Bei"))
 			{
-				carsPosInfo = getLaneIndAndOffSetRefHdMap(carsPosInfo, 4);
+				int beiRoadLaneCount=4;
+				carsPosInfo = getLaneIndAndOffSetRefHdMap(carsPosInfo, beiRoadLaneCount);
 				carDxDy = getCarDxDyRefhdMap(carDxDy);
 			}
+			std::vector<cv::Point2d> debugMidPoints = extractCarMidPoint(carDetectInfo);
+#ifdef ZHAODEBUG
+			for(int i=0;i<carsPosInfo.size();i++)
+			{
+				std::cout<<"laneId offsetX middlePoint carId, dxdy: "<<carsPosInfo[i].laneInd<<" "<<carsPosInfo[i].offSetXRefLeftLane<<" , "<<debugMidPoints[i]<<" , "<<carDetectInfo[i].carId<<" , "<<carDxDy[i]<<std::endl;
+			}
+#endif
 			std::vector<cv::Point2d> carsPosWithHdMap = getCarsPosWithRefHdMap(laneRefCameraSequent, carDxDy, carsPosInfo);
 			carsPosLongLat = transforRefCamera2LongLat(carsPosWithHdMap, cameraPos, cv::Point3d{roadHeading, 0.0, 0.0});
+#ifdef ZHAODEBUG
+			if(frameIndex>174)
+			{
+				showCarTrack(transforCVPoints2EigenVector2d(laneRefCameraSequent), transforCVPoints2EigenVector2d(carsPosWithHdMap));
+			}
+#endif
 //			showCarTrack(transforCVPoints2EigenVector2d(laneRefCameraSequent), transforCVPoints2EigenVector2d(carsPosWithHdMap));
+//			
 		}
-
+		
 		writeRow(outPutCsvFile, frameIndex, carDetectInfo, carsPosLongLat);
 //		endTime = clock();
 //		std::cout << "The run time is:" <<(double)(endTime - startTime)*1000 / CLOCKS_PER_SEC << "ms" << std::endl;

@@ -26,8 +26,19 @@ CARPOSINFO getLaneIndAndOffSet(const int x, const int y, const cv::Mat label)
     }
     else if(x == w - 1)
     {
+        for(int i = 0; i <= x; ++i)
+        {
+
+            if(img_gray.at<float>(y, i) != 255 && img_gray.at<float>(y, i+1) == 255)
+            {
+                retCarPosInfo.laneInd++;
+                index.push_back(i);
+            }
+        }
+        double left_dist = x - index.back();
+        double dist_mean = (index[2] - index[0]) / 3;
         retCarPosInfo.laneInd = 4;
-        retCarPosInfo.offSetXRefLeftLane = -1;
+        retCarPosInfo.offSetXRefLeftLane = left_dist / dist_mean;
     }
     else {
         for(int i = 0; i <= x; ++i)
@@ -57,7 +68,8 @@ CARPOSINFO getLaneIndAndOffSet(const int x, const int y, const cv::Mat label)
             }
             if(index_right.size() == 0)
             {
-                retCarPosInfo.offSetXRefLeftLane = -1;
+                double dist_mean = (index[2] - index[0]) / 3;
+                retCarPosInfo.offSetXRefLeftLane = left_dist / dist_mean;
             }
             else
             {
