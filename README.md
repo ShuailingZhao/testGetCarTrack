@@ -9,6 +9,9 @@ output:车的经纬度位置
 cmake .. && make -j4
 ./testGetCarTrackXY -config=../data/defaultConfigNan.yml
 ```
+##TODO
++ 模块化，主函数所在的文件太大需要拆分
++ kalman滤波
 
 ## Coding Reference
 数据太大存在百度网盘，位置在 百度网盘->工作->测试数据->getCarTrack.tar.gz
