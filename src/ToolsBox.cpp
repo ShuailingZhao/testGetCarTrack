@@ -59,7 +59,7 @@ bool drawRoadLane(cv::Mat& img, std::vector<std::vector<Eigen::Vector2d>> iLanes
 
     w = img.cols;
     h = img.rows;
-    cv::Point2d O(int(w/2.0),int(h*3.0/4.0));//50m
+    cv::Point2d O(int(w/2.0),int(h*2.0/4.0));//50m
     cv::circle(img, cv::Point(O.x,O.y), 4, cv::Scalar(0,0,0),-1);
 
     for(int i=0;i<iLanes2DBack.size();i++)
@@ -175,7 +175,7 @@ bool drawCarPos(cv::Mat& img, std::vector<Eigen::Vector2d> carsPos, double iScal
 
     w = img.cols;
     h = img.rows;
-    cv::Point2d O(int(w/2.0),int(h*3.0/4.0));//50m
+    cv::Point2d O(int(w/2.0),int(h*2.0/4.0));//50m
 //    cv::circle(img, cv::Point(O.x,O.y), 4, cv::Scalar(0,0,0),-1);
 
     for(int i=0;i<carsPos.size();i++)

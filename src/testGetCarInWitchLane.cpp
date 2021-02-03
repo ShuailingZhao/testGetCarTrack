@@ -12,7 +12,7 @@
 
 const char * usage = 
 "\n"
-"./testGetXYWithGeometry -intric=../data/cam.yml -i=../data/2020-07-25-12-38-34.jpg -o=../data/ImageEstimateright0.75BirdView.png"
+"./testGetCarInWitchLane"
 "\n";
 
 static void help()
@@ -21,14 +21,18 @@ static void help()
 }
 int main(int argc, char** argv)
 {
-	std::string maskFileName = "../data/nanMask.png";
+	std::string maskFileName = "../data/beiMask.png";
 	cv::Mat maskLane = cv::imread(maskFileName, cv::IMREAD_UNCHANGED);
 	
-	int x = 1725;
-	int y = 1152;
+	int x = 2005;//1991,394,29,26
+	int y = 420;
 	
 	std::cout<<"test Point : "<< x<<" , "<< y<<std::endl;
 	CARPOSINFO ret = getLaneIndAndOffSet(x, y, maskLane);
 	std::cout<<ret.laneInd<<" "<<ret.offSetXRefLeftLane<<std::endl;
+	cv::circle(maskLane, cv::Point(x,y), 8, cv::Scalar(0,0,0),-1);
+	cv::resize(maskLane, maskLane, cv::Size(maskLane.cols/3, maskLane.rows/3));
+	cv::imshow("testShow", maskLane);
+	cv::waitKey(0);
 	return 0;
 }

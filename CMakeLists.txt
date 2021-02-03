@@ -46,3 +46,7 @@ target_link_libraries(testGetCarTrackXY ${OpenCV_LIBS} ${CERES_LIBRARIES})
 file(GLOB src_testGetCarInWitchLane_files ${MODULE_SRC_ROOT}/testGetCarInWitchLane.cpp ${MODULE_SRC_ROOT}/getCarInWitchLane.cpp)
 add_executable(testGetCarInWitchLane ${src_testGetCarInWitchLane_files})
 target_link_libraries(testGetCarInWitchLane ${OpenCV_LIBS})
+
+file(GLOB src_testSortRoadData_files ${MODULE_SRC_ROOT}/testSortRoadData.cpp ${MODULE_SRC_ROOT}/getXYWithGeometry.cpp  ${MODULE_SRC_ROOT}/wgs84_3degreeGauss.cpp ${MODULE_SRC_ROOT}/getCarInWitchLane.cpp ${MODULE_SRC_ROOT}/bA.cpp ${MODULE_SRC_ROOT}/CSVRow.cpp ${MODULE_SRC_ROOT}/ToolsBox.cpp)
+add_executable(testSortRoadData ${src_testSortRoadData_files})
+target_link_libraries(testSortRoadData ${OpenCV_LIBS} ${CERES_LIBRARIES})

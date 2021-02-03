@@ -14,7 +14,7 @@
 #include "getCarInWitchLane.h"
 #include "ToolsBox.h"
 
-#define ZHAODEBUG
+//#define ZHAODEBUG
 struct CARDETECTED{
 	int frame;
 	int carId;
@@ -152,7 +152,7 @@ void getParserInfo(std::string& configFile, int argc, char** argv)
 	configFile = parser.get<std::string>("config");
 } 
 
-bool getConf(cv::Mat& P, cv::Point3d& cameraPos, cv::Point2d& crossPoint, double& roadHeading, double& cameraPitch, double& cameraHeigth, std::string& videoName, std::string& maskFileName, std::string& intrinsicName, std::string& hdmapName, std::string& carDataName, std::string& writeCarTrackName, std::string configFile)
+bool getConf(std::string& hdMapName, std::string& sortedHdMapName, cv::Point3d& cameraPos, double& roadHeading, std::string configFile)
 {
 	cv::FileStorage fs(configFile, cv::FileStorage::READ);
 	if(!fs.isOpened())
@@ -160,23 +160,13 @@ bool getConf(cv::Mat& P, cv::Point3d& cameraPos, cv::Point2d& crossPoint, double
 		std::cout<<"Failed to open file "<<configFile<<std::endl;
 		return false;
 	}
-	cv::Mat crossPointMat;
 	cv::Mat cameraPosition;
-	fs["cameraVideoName"] >> videoName;
-	fs["maskFileName"] >> maskFileName;
-	fs["intrinsic"] >> intrinsicName;
-	fs["hdMapName"] >> hdmapName;
-	fs["carDataName"] >> carDataName;
-	fs["writeCarTrackName"] >> writeCarTrackName;
-	fs["P"] >> P;
+	fs["hdMapName"] >> hdMapName;
+	fs["sortedHdMapName"] >> sortedHdMapName;
 	fs["cameraPos"] >> cameraPosition;
-	fs["cameraPitch"] >> cameraPitch;
-	fs["cameraHeight"] >> cameraHeigth;
-	fs["crossPoint"] >> crossPointMat;
 	fs["roadHeading"] >> roadHeading;
-	fs.release();
-	crossPoint = cv::Point2d{crossPointMat.at<double>(0,0), crossPointMat.at<double>(0,1)};
 	cameraPos = cv::Point3d{cameraPosition.at<double>(0,0), cameraPosition.at<double>(0,1), cameraPosition.at<double>(0,1)};
+	fs.release();
 	return true;
 }
 
@@ -483,9 +473,7 @@ cv::Point2d getCarPosWithRefHdMap(const std::vector<std::vector<cv::Point2d>> la
 	}
 	
 	downMaxInd = upMinInd-step;
-#ifdef ZHAODEBUG
 	std::cout<<"+++++ "<<upMinInd<<" , "<<downMaxInd<<" , "<<laneRefCameraSequent[carPosInfo.laneInd][upMinInd].y<<" , "<<laneRefCameraSequent[carPosInfo.laneInd][downMaxInd].y<<std::endl;
-#endif
 	double d1 = carRefCameraPos.y - laneRefCameraSequent[carPosInfo.laneInd][downMaxInd].y;
 	double rate = d1/(laneRefCameraSequent[carPosInfo.laneInd][upMinInd].y - laneRefCameraSequent[carPosInfo.laneInd][downMaxInd].y);
 	double x1 = (1.0-rate)*laneRefCameraSequent[carPosInfo.laneInd][downMaxInd].x + rate*laneRefCameraSequent[carPosInfo.laneInd][upMinInd].x;
@@ -513,51 +501,14 @@ cv::Point2d getCarPosWithRefHdMap(const std::vector<std::vector<cv::Point2d>> la
 	}
 }
 
-cv::Point2d debugGetCarPosWithRefHdMap(const std::vector<std::vector<cv::Point2d>> laneRefCameraSequent, const cv::Point2d carRefCameraPos, const CARPOSINFO carPosInfo)
-{
-//	CARPOSINFO getLaneIndAndOffSet(const cv::Point2d carPos, const std::string maskFileName);
 
-	CARPOSINFO debugCarPosInfo = carPosInfo;
-	debugCarPosInfo.laneInd = 0;
-	
-	std::vector<int> retNearPointsIndex;
-	int lanePointCount = laneRefCameraSequent[debugCarPosInfo.laneInd].size();
-	int step = laneRefCameraSequent[debugCarPosInfo.laneInd][0].y < laneRefCameraSequent[debugCarPosInfo.laneInd][lanePointCount-1].y?1:-1;
-	int startInd = 1==step?0:lanePointCount-1;
-	double offSetXRefLeftLane;
-	int upMinInd = -1, downMaxInd = -1;
-	
-	for(int i=startInd; i<lanePointCount || i<0; i+=step)
-	{
-		if(laneRefCameraSequent[debugCarPosInfo.laneInd][i].y > carRefCameraPos.y)
-		{
-			upMinInd = i;
-			break;
-		}
-	}
-	
-	downMaxInd = upMinInd-step;
-#ifdef ZHAODEBUG
-	std::cout<<"+++++ "<<upMinInd<<" , "<<downMaxInd<<" , "<<laneRefCameraSequent[debugCarPosInfo.laneInd][upMinInd].y<<" , "<<laneRefCameraSequent[debugCarPosInfo.laneInd][downMaxInd].y<<std::endl;
-#endif
-	double d1 = carRefCameraPos.y - laneRefCameraSequent[debugCarPosInfo.laneInd][downMaxInd].y;
-	double rate = d1/(laneRefCameraSequent[debugCarPosInfo.laneInd][upMinInd].y - laneRefCameraSequent[debugCarPosInfo.laneInd][downMaxInd].y);
-	double x1 = (1.0-rate)*laneRefCameraSequent[debugCarPosInfo.laneInd][downMaxInd].x + rate*laneRefCameraSequent[debugCarPosInfo.laneInd][upMinInd].x;
-	double y1 = (1.0-rate)*laneRefCameraSequent[debugCarPosInfo.laneInd][downMaxInd].y + rate*laneRefCameraSequent[debugCarPosInfo.laneInd][upMinInd].y;
-	
-	return cv::Point2d{x1, y1};
-}
-
-
-std::vector<cv::Point2d> getCarsPosWithRefHdMap(std::vector<cv::Point2d>& debugPointsOnLeftLane, const std::vector<std::vector<cv::Point2d>> laneRefCameraSequent, const std::vector<cv::Point2d> carsRefCameraPos, const std::vector<CARPOSINFO> carsPosInfo)
+std::vector<cv::Point2d> getCarsPosWithRefHdMap(const std::vector<std::vector<cv::Point2d>> laneRefCameraSequent, const std::vector<cv::Point2d> carsRefCameraPos, const std::vector<CARPOSINFO> carsPosInfo)
 {
 	std::vector<cv::Point2d> retCarsPosWithHdMap;
 	for(int i=0;i<carsRefCameraPos.size();i++)
 	{
 		cv::Point2d carPosWithHdMap = getCarPosWithRefHdMap(laneRefCameraSequent, carsRefCameraPos[i], carsPosInfo[i]);
-		cv::Point2d debugPointOnLeftLane = debugGetCarPosWithRefHdMap(laneRefCameraSequent, carsRefCameraPos[i], carsPosInfo[i]);
 		retCarsPosWithHdMap.push_back(carPosWithHdMap);
-		debugPointsOnLeftLane.push_back(debugPointOnLeftLane);
 	}
 	return retCarsPosWithHdMap;	
 }
@@ -574,6 +525,16 @@ std::vector<Eigen::Vector2d> transforCVPoints2EigenVector2d(const std::vector<cv
 	return retEigenV;
 }
 
+std::vector<cv::Point2d> transforEigenVector2d2CVPoints(const std::vector<Eigen::Vector2d> eigenV)
+{
+	std::vector<cv::Point2d> retPoints;
+	for(int i=0;i<eigenV.size();i++)
+	{
+		retPoints.push_back(cv::Point2d{eigenV[i](0,0), eigenV[i](1,0)});
+	}
+	return retPoints;
+}
+
 std::vector<std::vector<Eigen::Vector2d>> transforCVPoints2EigenVector2d(const std::vector<std::vector<cv::Point2d>> points)
 {
 	std::vector<std::vector<Eigen::Vector2d>> retEigenV;
@@ -584,6 +545,16 @@ std::vector<std::vector<Eigen::Vector2d>> transforCVPoints2EigenVector2d(const s
 	return retEigenV;
 }
 
+
+std::vector<std::vector<cv::Point2d>> transforEigenVector2d2CVPoints(const std::vector<std::vector<Eigen::Vector2d>> eigenV)
+{
+	std::vector<std::vector<cv::Point2d>> retCvPoints;
+	for(int i=0;i<eigenV.size();i++)
+	{
+		retCvPoints.push_back(transforEigenVector2d2CVPoints(eigenV[i]));
+	}
+	return retCvPoints;
+}
 
 std::vector<CARPOSINFO> getLaneIndAndOffSetRefHdMap(const std::vector<CARPOSINFO> carsPosInfo, const int laneCount)
 {
@@ -647,25 +618,12 @@ bool writeRow(std::ofstream& outPutCsvFile, const int frameInd, const std::vecto
 	return true;
 }
 
-bool writeDebugRow(std::ofstream& outPutCsvFile, const int frameInd, const std::vector<CARDETECTED> carsDetectInfo, const std::vector<cv::Point2d> carsPosLongLat, const std::vector<CARPOSINFO> carsPosInfo)
+void getDataInRange(std::vector<cv::Point2d>& carDxDy, std::vector<CARDETECTED>& carDetectInfo, const double maxDis=200.0, const double minDis=-200.0)
 {
-	std::string csvRow = std::to_string(frameInd);
-	for(int i=0;i<carsPosLongLat.size();i++)
-	{
-		csvRow = csvRow + "," + std::to_string(carsDetectInfo[i].carId) + "," + std::to_string(carsPosInfo[i].laneInd) + "," + to_string_with_precision(carsPosLongLat[i].x) + "," + to_string_with_precision(carsPosLongLat[i].y);
-	}
-	outPutCsvFile << csvRow <<std::endl;
-	return true;
-}
-
-
-void getDataInRange(std::vector<cv::Point2d>& carDxDy, std::vector<CARDETECTED>& carDetectInfo, const cv::Size imageSize, const double maxDis=180.0, const double minDis=-180.0)
-{
-	int threshholdToBottom = 60;
 	std::vector<CARDETECTED>::iterator itDetect= carDetectInfo.begin();
 	for(std::vector<cv::Point2d>::iterator it= carDxDy.begin(); it!=carDxDy.end();)
 	{
-		if(((*it).y>maxDis || (*it).y<minDis) || (*itDetect).bbox.y + (*itDetect).bbox.height > imageSize.height-threshholdToBottom)
+		if((*it).y>maxDis || (*it).y<minDis)
 		{
 			it=carDxDy.erase(it);
 			itDetect = carDetectInfo.erase(itDetect);
@@ -685,7 +643,7 @@ void getDataInLanes(std::vector<cv::Point2d>& carDxDy, std::vector<CARDETECTED>&
 	std::vector<CARDETECTED>::iterator itDetect= carDetectInfo.begin();
 	for(std::vector<CARPOSINFO>::iterator it= carsPosInfo.begin(); it!=carsPosInfo.end();)
 	{
-		if((!bei && (*it).laneInd<0)||(bei && ((*it).laneInd<0 || (*it).laneInd>2)) || ((*it).offSetXRefLeftLane<0.0 || (*it).offSetXRefLeftLane>1.0))
+		if((!bei && (*it).laneInd<0)||(bei && ((*it).laneInd<0 || (*it).laneInd>2)))
 		{
 			it = carsPosInfo.erase(it);
 			itDxDy = carDxDy.erase(itDxDy);
@@ -701,71 +659,83 @@ void getDataInLanes(std::vector<cv::Point2d>& carDxDy, std::vector<CARDETECTED>&
 	
 }
 
-std::vector<CARDETECTED> filterCarDetectInfo(const std::vector<CARDETECTED> lastCarDetectInfo, const std::vector<CARDETECTED> carDetectInfo, bool isBei = false)
-	
+template <typename T>
+std::vector<size_t> sort_indexes(const std::vector<T> &v)
 {
-	if(lastCarDetectInfo.empty())
+  std::vector<size_t> idx(v.size());
+  std::iota(idx.begin(), idx.end(), 0);
+
+  std::sort(idx.begin(), idx.end(),
+       [&v](size_t i1, size_t i2) {return v[i1] < v[i2];});
+  return idx;
+}
+
+std::vector<Eigen::Vector2d> sortVector(const std::vector<Eigen::Vector2d> rawVector)
+{
+	std::vector<Eigen::Vector2d> resultVector;
+	std::vector<double> sortedVectorX;
+	for(int i=0;i<rawVector.size();i++)
 	{
-		return carDetectInfo;
+		sortedVectorX.push_back(rawVector[i](1,0));//(0,0),(1,0)
 	}
-	std::vector<CARDETECTED> retCarDetectInfo;
-	for(int i=0; i<carDetectInfo.size(); i++)
+	std::vector<size_t> idx = sort_indexes(sortedVectorX);
+	
+	for(int i=0;i<idx.size();i++)
+        {
+                resultVector.push_back(rawVector[idx[i]]);
+        }
+        return resultVector;
+
+}
+
+std::vector<cv::Point2d> sortVector(const std::vector<cv::Point2d> rawCVPoints)
+{
+	return transforEigenVector2d2CVPoints(sortVector(transforCVPoints2EigenVector2d(rawCVPoints)));
+}
+
+std::vector<Eigen::Vector2d> sortVectorWith(const std::vector<Eigen::Vector2d> data, const std::vector<Eigen::Vector2d> rawIndex)
+{
+	std::vector<Eigen::Vector2d> resultData;
+	std::vector<double> sortedVectorX;
+	for(int i=0;i<rawIndex.size();i++)
 	{
-		int lastIndex = -1;
-		for(int j=0;j<lastCarDetectInfo.size();j++)
-		{
-			if(carDetectInfo[i].carId == lastCarDetectInfo[j].carId)
-			{
-				lastIndex = j;
-				break;
-			}
-		}
-		
-		CARDETECTED updateCarDetectInfo = carDetectInfo[i];
-		if(-1 == lastIndex)
-		{
-			retCarDetectInfo.push_back(updateCarDetectInfo);
-			continue;
-		}
-		
-		if(!isBei && carDetectInfo[i].bbox.y > lastCarDetectInfo[lastIndex].bbox.y)
-		{
-			updateCarDetectInfo.bbox.y = lastCarDetectInfo[lastIndex].bbox.y;
-		}
-		
-		if(!isBei && carDetectInfo[i].bbox.width > lastCarDetectInfo[lastIndex].bbox.width)
-		{
-			updateCarDetectInfo.bbox.width = lastCarDetectInfo[lastIndex].bbox.width;
-		}
-		
-		if(!isBei && carDetectInfo[i].bbox.height > lastCarDetectInfo[lastIndex].bbox.height)
-		{
-			updateCarDetectInfo.bbox.height = lastCarDetectInfo[lastIndex].bbox.height;
-		}
-		
-		if(isBei && carDetectInfo[i].bbox.y < lastCarDetectInfo[lastIndex].bbox.y)
-		{
-			updateCarDetectInfo.bbox.y = lastCarDetectInfo[lastIndex].bbox.y;
-		}
-		
-		if(isBei && carDetectInfo[i].bbox.width < lastCarDetectInfo[lastIndex].bbox.width)
-		{
-			updateCarDetectInfo.bbox.width = lastCarDetectInfo[lastIndex].bbox.width;
-		}
-		
-		if(isBei && carDetectInfo[i].bbox.height < lastCarDetectInfo[lastIndex].bbox.height)
-		{
-			updateCarDetectInfo.bbox.height = lastCarDetectInfo[lastIndex].bbox.height;
-		}
-		retCarDetectInfo.push_back(updateCarDetectInfo);	
+		sortedVectorX.push_back(rawIndex[i](1,0));//(0,0),(1,0)
 	}
-	return retCarDetectInfo;
-} 
+	std::vector<size_t> idx = sort_indexes(sortedVectorX);
+
+	for(int i=0;i<idx.size();i++)
+        {
+                resultData.push_back(data[idx[i]]);
+        }
+        return resultData;
+
+}
+
+std::vector<cv::Point2d> sortVectorWith(const std::vector<cv::Point2d> data, const std::vector<cv::Point2d> rawIndex)
+{
+	return transforEigenVector2d2CVPoints(sortVectorWith(transforCVPoints2EigenVector2d(data), transforCVPoints2EigenVector2d(rawIndex)));
+	
+}
+
+bool writeRow(std::ofstream& outPutCsvFile, const std::vector<cv::Point2d> carsPosLongLat)
+{
+	if(carsPosLongLat.empty())
+	{
+		return false;
+	}
+	std::string csvRow = to_string_with_precision(carsPosLongLat[0].x) + "," + to_string_with_precision(carsPosLongLat[0].y);
+	for(int i=1;i<carsPosLongLat.size();i++)
+	{
+		csvRow += "," + to_string_with_precision(carsPosLongLat[i].x) + "," + to_string_with_precision(carsPosLongLat[i].y);
+	}
+	outPutCsvFile << csvRow <<std::endl;
+	return true;
+}
 
 
 const char * usage = 
 "\n"
-"./testGetCarTrackXY -config=../data/defaultConfigNan.yml"
+"./testSortRoadData -config=../data/defaultSortRoadData.yml"
 "\n";
 
 static void help()
@@ -774,7 +744,7 @@ static void help()
 }
 int main(int argc, char** argv)
 {
-	int startShowFrame=1184;
+	int startShowFrame=0;
 	if(argc<2)
 	{
 		help();
@@ -786,164 +756,29 @@ int main(int argc, char** argv)
 	getParserInfo(configFile, argc, argv);
 	std::cout<< "configFile:"<<configFile<<std::endl;
 
-	
-	cv::Mat P;
 	cv::Point3d cameraPos;
-	cv::Point2d crossPoint;
-	double cameraPitch;
-	double cameraHeigth;
 	double roadHeading;
-	std::string videoName;
-	std::string maskFileName;
-	std::string hdmapName;
-	std::string carDataName;
-	std::string intrinsicName;
-	std::string writeCarTrackName;
-	bool ret = getConf(P, cameraPos, crossPoint, roadHeading, cameraPitch, cameraHeigth, videoName, maskFileName, intrinsicName, hdmapName, carDataName, writeCarTrackName, configFile);
+	std::string hdMapName;
+	std::string sortedHdMapName;
+	bool ret = getConf(hdMapName, sortedHdMapName, cameraPos, roadHeading, configFile);
 	std::cout<<"---------------------------------------------------------"<<std::endl;
-	std::cout<<"videoName: "<<std::endl<<videoName<<std::endl;
-	std::cout<<"maskFileName: "<<std::endl<<maskFileName<<std::endl;
-	std::cout<<"intrinsicName: "<<std::endl<<intrinsicName<<std::endl;
-	std::cout<<"writeCarTrackName: "<<writeCarTrackName<<std::endl;
-	std::cout<<"hdmapName: "<<std::endl<<hdmapName<<std::endl;
-	std::cout<<"carDataName: "<<std::endl<<carDataName<<std::endl;
-	std::cout<<"cameraPos: "<<std::endl<<cameraPos<<std::endl;
-	std::cout<<"cameraPitch: "<<std::endl<<cameraPitch<<std::endl;
-	std::cout<<"cameraHeigth: "<<std::endl<<cameraHeigth<<std::endl;
-	std::cout<<"crossPoint: "<<std::endl<<crossPoint<<std::endl;
-	std::cout<<"roadHeading: "<<std::endl<<roadHeading<<std::endl;
+	std::cout<<"hdMapName: "<<hdMapName<<std::endl;
+	std::cout<<"sortedHdMapName: "<<sortedHdMapName<<std::endl;
+	std::cout<<"cameraPos: "<<cameraPos<<std::endl;
+	std::cout<<"roadHeading: "<<roadHeading<<std::endl;
 	std::cout<<"---------------------------------------------------------"<<std::endl;
 	
-	std::ofstream outPutCsvFile(writeCarTrackName);
-	std::ofstream debugDutPutCsvFile("../data/debugNanPointsOnLeftLane.txt");
-	cv::Mat maskLane = cv::imread(maskFileName, cv::IMREAD_UNCHANGED);
-	std::vector<std::vector<cv::Point2d>> laneSequent = getLaneSequent(hdmapName);
+	std::ofstream outPutCsvFile(sortedHdMapName);
+	std::vector<std::vector<cv::Point2d>> laneSequent = getLaneSequent(hdMapName);
 	std::vector<std::vector<cv::Point2d>> laneRefCameraSequent = getRoadPointsDXDYRefCamera(cameraPos, cv::Point3d{roadHeading, 0.0, 0.0}, laneSequent);
 //	print2dPoints(laneRefCameraSequent);
-	std::cout << "P: "<<P<<std::endl;
-	
-	for(int i=0;i<laneRefCameraSequent.size();i++)
-	{
-		std::cout<<"------------- "<<i<<std::endl;
-		for(int j=0;j<laneRefCameraSequent[i].size();j++)
-		{
-			std::cout<<laneRefCameraSequent[i][j]<<std::endl;
-		}
-	}
-	
-	
-	
-	std::ifstream carPosCsvFile(carDataName);
-	std::vector<CARDETECTED> lastCarDetectInfo;
-	int lastCarDetectFrameCount = 1;
-	std::vector<CARDETECTED> carDetectInfo;
-	int frameIndex = 0;
-	
-	while(getCarDetect(carDetectInfo, carPosCsvFile))
-	{
-		carDetectInfo = filterCarDetectInfo(lastCarDetectInfo, carDetectInfo, configFile.npos != configFile.find("Bei"));
-		lastCarDetectInfo.assign(carDetectInfo.begin(),carDetectInfo.end());
-		
-		clock_t startTime,endTime;
-//		startTime = clock();
-		frameIndex++;
-		std::cout<<"frameIndex: "<<frameIndex<<std::endl;
-#ifdef ZHAODEBUG
-		if(frameIndex<startShowFrame)
-		{
-			continue;
-		}
-#endif
-		std::vector<cv::Point2d> carsPosLongLat;
-		std::vector<cv::Point2d> debugCarsPosLongLat;
-		std::vector<cv::Point2d> carDxDy;
-		std::vector<CARPOSINFO> carsPosInfo;
 
-#ifdef ZHAODEBUG
-		std::cout<<"Detected car num: "<<carDetectInfo.size()<<std::endl;
-#endif		
-		if(!carDetectInfo.empty())
-		{
-			withGeometry::TiLane laneDxDy;
-			carDxDy = laneDxDy.getPointSetsXY(extractCarMidPoint(carDetectInfo), crossPoint, P, cameraHeigth, cameraPitch);
-#ifdef ZHAODEBUG
-			for(int i=0;i<carDxDy.size();i++)
-			{
-				std::cout<<"before in range carId dxdy: "<<carDetectInfo[i].carId<<" , "<<carDxDy[i]<<std::endl;
-			}
-#endif
-			getDataInRange(carDxDy, carDetectInfo, maskLane.size());
-#ifdef ZHAODEBUG
-			for(int i=0;i<carDxDy.size();i++)
-			{
-				std::cout<<"after in range carId dxdy: "<<carDetectInfo[i].carId<<" , "<<carDxDy[i]<<std::endl;
-			}
-#endif			
-			carsPosInfo = getLaneIndAndOffSet(extractCarMidPoint(carDetectInfo), maskLane);
-#ifdef ZHAODEBUG
-			for(int i=0;i<carsPosInfo.size();i++)
-			{
-				std::cout<<"after getLaneIndAndOffSet carId laneInd offset: "<<carDetectInfo[i].carId<<" , "<<carsPosInfo[i].laneInd<<" , "<<carsPosInfo[i].offSetXRefLeftLane<<std::endl;
-			}
-#endif
-			getDataInLanes(carDxDy, carDetectInfo, carsPosInfo, configFile.npos != configFile.find("Bei"));
-			
-		}
-		
-#ifdef ZHAODEBUG
-		std::cout<<"After filtering In +-200 range and in Lanes detected car num: "<<carDxDy.size()<<std::endl;
-		std::vector<cv::Point2d> debugMidPoint =  extractCarMidPoint(carDetectInfo);
-		for(int i=0;i<carDxDy.size();i++)
-		{
-			std::cout<<"carId dxdy carInLaneId, offsetRate: "<<carDetectInfo[i].carId<<" , "<<carDxDy[i]<<" , "<<carsPosInfo[i].laneInd<<" , "<<carsPosInfo[i].offSetXRefLeftLane<<std::endl;
-		}
-#endif	
-		
-		if(!carDetectInfo.empty() && !carDxDy.empty() && carDetectInfo.size() == carDxDy.size())
-		{	
-			if(configFile.npos != configFile.find("Bei"))
-			{
-				int beiRoadLaneCount=4;
-				carsPosInfo = getLaneIndAndOffSetRefHdMap(carsPosInfo, beiRoadLaneCount);
-				carDxDy = getCarDxDyRefhdMap(carDxDy);
-			}
-			
-#ifdef ZHAODEBUG
-			std::vector<cv::Point2d> debugMidPoints = extractCarMidPoint(carDetectInfo);
-			for(int i=0;i<carsPosInfo.size();i++)
-			{
-				std::cout<<"CarId laneId offsetX middlePoint, dxdy: "<<carDetectInfo[i].carId<<" , "<<carsPosInfo[i].laneInd<<" "<<carsPosInfo[i].offSetXRefLeftLane<<" , "<<debugMidPoints[i]<<" , "<<carDxDy[i]<<std::endl;
-			}
-#endif
-			std::vector<cv::Point2d> debugPointsOnLeftLane;
-			std::vector<cv::Point2d> carsPosWithHdMap = getCarsPosWithRefHdMap(debugPointsOnLeftLane, laneRefCameraSequent, carDxDy, carsPosInfo);
-			
-			carsPosLongLat = transforRefCamera2LongLat(carsPosWithHdMap, cameraPos, cv::Point3d{roadHeading, 0.0, 0.0});
-			debugCarsPosLongLat = transforRefCamera2LongLat(debugPointsOnLeftLane, cameraPos, cv::Point3d{roadHeading, 0.0, 0.0});
-			
-#ifdef ZHAODEBUG
-			for(int i=0;i<carsPosLongLat.size();i++)
-			{
-				std::cout<<"carPos refCamera using hdmap: "<<carsPosWithHdMap[i]<<" ----- "<<carsPosLongLat[i]<<std::endl;
-			}
-			
-			if(frameIndex>=startShowFrame)
-			{
-				showCarTrack(transforCVPoints2EigenVector2d(laneRefCameraSequent), transforCVPoints2EigenVector2d(carsPosWithHdMap));
-			}
-#endif
-//			
-		}
-		
-		writeRow(outPutCsvFile, frameIndex, carDetectInfo, carsPosLongLat);
-		writeDebugRow(debugDutPutCsvFile, frameIndex, carDetectInfo, debugCarsPosLongLat, carsPosInfo);
-//		endTime = clock();
-//		std::cout << "The run time is:" <<(double)(endTime - startTime)*1000 / CLOCKS_PER_SEC << "ms" << std::endl;
+	for(int i=0;i<laneSequent.size();i++)
+	{
+		std::vector<cv::Point2d> oneLane = sortVectorWith(laneSequent[i], laneRefCameraSequent[i]);
+		writeRow(outPutCsvFile, oneLane);
 	}
 
-	
 	outPutCsvFile.close();
-	debugDutPutCsvFile.close();
-	carPosCsvFile.close();
 	return 0;
 }
