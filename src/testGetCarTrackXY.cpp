@@ -917,7 +917,7 @@ int main(int argc, char** argv)
 #endif
 			std::vector<cv::Point2d> debugPointsOnLeftLane;
 			std::vector<cv::Point2d> carsPosWithHdMap = getCarsPosWithRefHdMap(debugPointsOnLeftLane, laneRefCameraSequent, carDxDy, carsPosInfo);
-			
+			//此处添加kalman滤波操作
 			carsPosLongLat = transforRefCamera2LongLat(carsPosWithHdMap, cameraPos, cv::Point3d{roadHeading, 0.0, 0.0});
 			debugCarsPosLongLat = transforRefCamera2LongLat(debugPointsOnLeftLane, cameraPos, cv::Point3d{roadHeading, 0.0, 0.0});
 			
